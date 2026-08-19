@@ -313,6 +313,54 @@
     font-size:12.5px; padding:7px 12px; border-radius:100px; cursor:pointer;
   }
 
+  /* ============ Level selector: multi-select ============ */
+  .level-checkbox{
+    position:absolute; top:10px; right:10px; width:19px; height:19px; border-radius:6px;
+    border:1.5px solid var(--border); background:var(--surface-2); display:flex; align-items:center; justify-content:center;
+  }
+  .level-card{ position:relative; }
+  .level-card.selected .level-checkbox{ background:var(--accent); border-color:var(--accent); }
+  .level-checkbox svg{ width:12px; height:12px; color:#241705; opacity:0; }
+  .level-card.selected .level-checkbox svg{ opacity:1; }
+  .selectall-btn{
+    flex:none; background:none; border:1px solid var(--border); color:var(--text-dim);
+    font-size:11.5px; padding:5px 11px; border-radius:100px; cursor:pointer;
+  }
+  .selectall-btn:active{ background:var(--surface-2); }
+
+  /* ============ Batch processing rows ============ */
+  .batch-rows{ display:flex; flex-direction:column; gap:8px; }
+  .batch-row{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:12px 13px; display:flex; align-items:center; gap:11px;
+  }
+  .batch-row .lvl-badge{
+    flex:none; width:30px; height:30px; border-radius:9px; background:var(--surface-2); border:1px solid var(--border-soft);
+    display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--text-dim);
+  }
+  .batch-row.is-done .lvl-badge{ background:var(--teal-ink); color:var(--teal); border-color:transparent; }
+  .batch-row.is-error .lvl-badge{ background:var(--danger-ink); color:var(--danger); border-color:transparent; }
+  .batch-row .info{ min-width:0; flex:1; }
+  .batch-row .info .name{ font-size:13.5px; font-weight:600; }
+  .batch-row .info .sub{ margin-top:2px; font-family:var(--font-mono); font-size:11px; color:var(--text-faint); }
+  .batch-row .status{ flex:none; }
+  .batch-spinner{
+    width:16px; height:16px; border-radius:50%; border:2px solid var(--border); border-top-color:var(--accent);
+    animation:spin .7s linear infinite;
+  }
+  .batch-row .dl-btn{
+    flex:none; background:var(--teal-ink); border:1px solid transparent; color:var(--teal);
+    width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .batch-row .dl-btn svg{ width:16px; height:16px; }
+  .batch-row .retry-btn{
+    flex:none; background:none; border:1px solid var(--danger-border); color:var(--danger);
+    font-size:11.5px; padding:6px 10px; border-radius:100px; cursor:pointer;
+  }
+  .batch-summary{
+    margin-top:12px; font-size:12px; color:var(--text-faint); text-align:center;
+  }
+
   /* ============ Sticky action bar ============ */
   .action-bar{
     position:fixed; left:0; right:0; bottom:0; z-index:30;
@@ -407,15 +455,18 @@
 
   <!-- STEP 2: LEVEL SELECT -->
   <section id="sectionLevel" class="hidden">
-    <div class="section-head"><h2>2 · เลือกระดับคุณภาพ</h2></div>
+    <div class="section-head">
+      <h2>2 · เลือกระดับคุณภาพ</h2>
+      <button class="selectall-btn" id="selectAllBtn" type="button">เลือกทั้งหมด</button>
+    </div>
     <div class="level-scroll" id="levelScroll"></div>
     <div class="level-hint">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-      <span>คุณภาพสูงขึ้น = รายละเอียดมากขึ้น + ไฟล์ SVG ใหญ่ขึ้น + ใช้เวลานานขึ้น</span>
+      <span id="levelHintText">คุณภาพสูงขึ้น = รายละเอียดมากขึ้น + ไฟล์ SVG ใหญ่ขึ้น + ใช้เวลานานขึ้น · เลือกได้หลายระดับเพื่อสร้างพร้อมกัน</span>
     </div>
   </section>
 
-  <!-- STEP 3: PROCESSING -->
+  <!-- STEP 3: PROCESSING (single level) -->
   <section id="sectionProcessing" class="hidden">
     <div class="process-card">
       <div class="scan-frame"><img id="processThumb" alt=""><div class="scan-line"></div></div>
@@ -425,6 +476,15 @@
       <div class="process-reassure hidden" id="processReassure">ระดับนี้ใช้เวลานานกว่าปกติ — หน้าเว็บยังไม่ค้าง ยังทำงานอยู่เบื้องหลัง</div>
       <button class="process-cancel" id="processCancelBtn">ยกเลิกการแปลง</button>
     </div>
+  </section>
+
+  <!-- STEP 3b: BATCH PROCESSING / RESULTS (2+ levels selected) -->
+  <section id="sectionBatch" class="hidden">
+    <div class="section-head"><h2 id="batchHeading">กำลังสร้าง SVG หลายระดับ</h2></div>
+    <div class="batch-rows" id="batchRows"></div>
+    <div class="process-elapsed mono" id="batchElapsed" style="text-align:center;">0.0 วินาที</div>
+    <div class="batch-summary" id="batchSummary"></div>
+    <button class="process-cancel" id="batchCancelBtn" style="display:block;margin:12px auto 0;">ยกเลิกที่ยังไม่เสร็จ</button>
   </section>
 
   <!-- STEP 4: ERROR -->
@@ -503,17 +563,26 @@
   /* ============ Conversion presets (level 1-5) mapped to engine options ============ */
   var PRESETS = {
     1:{ key:1, name:"เร็ว", desc:"รายละเอียดน้อยที่สุด ประมวลผลเร็ว ไฟล์ SVG เล็ก",
-        options:{ numberofcolors:6,  ltres:2,   qtres:2,   pathomit:24, colorquantcycles:1, blurradius:0, roundcoords:1, strokewidth:0, rightangleenhance:true } },
+        options:{ numberofcolors:6,  ltres:2,   qtres:2,   pathomit:24, colorquantcycles:1, blurradius:0, roundcoords:1, strokewidth:0, rightangleenhance:true, mergeThreshold:0 } },
     2:{ key:2, name:"สมดุล", desc:"รายละเอียดและขนาดไฟล์สมดุล เหมาะกับการใช้งานทั่วไป",
-        options:{ numberofcolors:12, ltres:1,   qtres:1,   pathomit:10, colorquantcycles:2, blurradius:0, roundcoords:1, strokewidth:0, rightangleenhance:true } },
+        options:{ numberofcolors:12, ltres:1,   qtres:1,   pathomit:10, colorquantcycles:2, blurradius:0, roundcoords:1, strokewidth:0, rightangleenhance:true, mergeThreshold:0 } },
     3:{ key:3, name:"ละเอียด", desc:"เก็บรายละเอียดมากขึ้น ไฟล์ SVG ใหญ่ขึ้น ใช้เวลานานขึ้น",
-        options:{ numberofcolors:20, ltres:0.6, qtres:0.6, pathomit:6,  colorquantcycles:3, blurradius:0, roundcoords:2, strokewidth:0, rightangleenhance:true } },
+        options:{ numberofcolors:20, ltres:0.6, qtres:0.6, pathomit:6,  colorquantcycles:3, blurradius:0, roundcoords:2, strokewidth:0, rightangleenhance:true, mergeThreshold:18 } },
     4:{ key:4, name:"คุณภาพสูง", desc:"เก็บรายละเอียดมาก จำนวน path และข้อมูล SVG เพิ่มขึ้น",
-        options:{ numberofcolors:32, ltres:0.3, qtres:0.3, pathomit:3,  colorquantcycles:3, blurradius:0, roundcoords:2, strokewidth:0, rightangleenhance:true } },
+        options:{ numberofcolors:32, ltres:0.3, qtres:0.3, pathomit:3,  colorquantcycles:3, blurradius:0, roundcoords:2, strokewidth:0, rightangleenhance:true, mergeThreshold:18 } },
     5:{ key:5, name:"สูงสุด", desc:"คุณภาพสูงสุดที่รองรับ อาจใช้ RAM และเวลาประมวลผลมากที่สุด",
-        options:{ numberofcolors:64, ltres:0.1, qtres:0.1, pathomit:0,  colorquantcycles:4, blurradius:0, roundcoords:2, strokewidth:0, rightangleenhance:true } }
+        options:{ numberofcolors:64, ltres:0.1, qtres:0.1, pathomit:0,  colorquantcycles:4, blurradius:0, roundcoords:2, strokewidth:0, rightangleenhance:true, mergeThreshold:18 } }
   };
   var DEFAULT_LEVEL = 2;
+  // mergeThreshold: after color quantization, palette colors whose combined
+  // RGBA distance is <= this get folded into one before layering/tracing.
+  // Anti-aliased edges (font/shape fringes) create many near-duplicate
+  // palette entries that add processing cost (layering scans once per
+  // palette color) without adding anything visible — merging them is a
+  // real speedup with no visual quality loss, verified by direct
+  // before/after profiling, not a detail-reduction trick like lowering
+  // numberofcolors would be. Levels 1-2 already use few colors so it's
+  // skipped there (0 = disabled).
 
   var LIMITS = {
     maxFileBytes: 25 * 1024 * 1024,      // 25MB upload guard
@@ -539,12 +608,20 @@
     changeFileBtn: document.getElementById('changeFileBtn'),
     sectionLevel: document.getElementById('sectionLevel'),
     levelScroll: document.getElementById('levelScroll'),
+    levelHintText: document.getElementById('levelHintText'),
+    selectAllBtn: document.getElementById('selectAllBtn'),
     sectionProcessing: document.getElementById('sectionProcessing'),
     processThumb: document.getElementById('processThumb'),
     processSub: document.getElementById('processSub'),
     processElapsed: document.getElementById('processElapsed'),
     processReassure: document.getElementById('processReassure'),
     processCancelBtn: document.getElementById('processCancelBtn'),
+    sectionBatch: document.getElementById('sectionBatch'),
+    batchHeading: document.getElementById('batchHeading'),
+    batchRows: document.getElementById('batchRows'),
+    batchElapsed: document.getElementById('batchElapsed'),
+    batchSummary: document.getElementById('batchSummary'),
+    batchCancelBtn: document.getElementById('batchCancelBtn'),
     sectionError: document.getElementById('sectionError'),
     errorTitle: document.getElementById('errorTitle'),
     errorBody: document.getElementById('errorBody'),
@@ -570,12 +647,12 @@
 
   /* ============ State ============ */
   var state = {
-    phase: 'idle', // idle | fileReady | processing | success | error
+    phase: 'idle', // idle | fileReady | processing | batchProcessing | success | batchSuccess | error
     file: null,
     originalName: '',
     imageData: null,   // {width,height,data:Uint8ClampedArray} for worker
     previewDataUrl: '', // for thumbnails/compare "original" side
-    selectedLevel: DEFAULT_LEVEL,
+    selectedLevels: {}, // { levelNum: true } — multi-select; init after DEFAULT_LEVEL is defined
     svgString: '',
     svgDataUrl: '',
     stats: null,
@@ -583,8 +660,15 @@
     reassureHandle: null,
     elapsedInterval: null,
     processStartTime: null,
-    subMsgHandle: null
+    subMsgHandle: null,
+    // batch mode
+    batch: null // { levels:[...], results:{lvl:{status,svgString,svgDataUrl,stats,worker}}, startTime, elapsedInterval, order:[] }
   };
+  state.selectedLevels[DEFAULT_LEVEL] = true;
+
+  function selectedLevelsList(){
+    return [1,2,3,4,5].filter(function(l){ return !!state.selectedLevels[l]; });
+  }
 
   var PROCESS_MESSAGES = ["กำลังวิเคราะห์สี...", "กำลังตรวจจับขอบภาพ...", "กำลังลาก path...", "กำลังปรับความโค้งของเส้น...", "กำลังประกอบไฟล์ SVG..."];
 
@@ -620,38 +704,66 @@
     applyTheme(cur === 'dark' ? 'light' : 'dark');
   });
 
-  /* ============ Level cards render ============ */
+  /* ============ Level cards render (multi-select) ============ */
   function buildLevelCards(){
     el.levelScroll.innerHTML = '';
     [1,2,3,4,5].forEach(function(lvl){
       var p = PRESETS[lvl];
+      var isSelected = !!state.selectedLevels[lvl];
       var card = document.createElement('button');
       card.type = 'button';
-      card.className = 'level-card' + (state.selectedLevel === lvl ? ' active' : '');
+      card.className = 'level-card' + (isSelected ? ' selected active' : '');
       card.setAttribute('data-level', lvl);
       var dots = '';
       for(var i=1;i<=5;i++){ dots += '<span class="dot' + (i<=lvl ? ' on' : '') + '"></span>'; }
       card.innerHTML =
+        '<div class="level-checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></div>' +
         '<div class="dots">' + dots + '</div>' +
         '<div class="name">' + p.name + '</div>' +
         '<div class="desc">' + p.desc + '</div>';
       card.addEventListener('click', function(){
-        state.selectedLevel = lvl;
+        var willSelect = !state.selectedLevels[lvl];
+        // guard: don't allow zero levels selected — keep at least one
+        if(!willSelect && selectedLevelsList().length === 1) return;
+        state.selectedLevels[lvl] = willSelect;
         buildLevelCards();
+        render();
       });
       el.levelScroll.appendChild(card);
     });
+    updateSelectAllBtn();
   }
+
+  function updateSelectAllBtn(){
+    var allOn = selectedLevelsList().length === 5;
+    el.selectAllBtn.textContent = allOn ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด';
+  }
+
+  el.selectAllBtn.addEventListener('click', function(){
+    var allOn = selectedLevelsList().length === 5;
+    if(allOn){
+      state.selectedLevels = {}; state.selectedLevels[DEFAULT_LEVEL] = true;
+    } else {
+      [1,2,3,4,5].forEach(function(l){ state.selectedLevels[l] = true; });
+    }
+    buildLevelCards();
+    render();
+  });
 
   /* ============ Render / phase visibility ============ */
   function render(){
     el.sectionLevel.classList.toggle('hidden', !(state.phase !== 'idle'));
     el.sectionProcessing.classList.toggle('hidden', state.phase !== 'processing');
+    el.sectionBatch.classList.toggle('hidden', !(state.phase === 'batchProcessing' || state.phase === 'batchSuccess'));
     el.sectionError.classList.toggle('hidden', state.phase !== 'error');
     el.sectionResult.classList.toggle('hidden', state.phase !== 'success');
     el.fileCard.classList.toggle('hidden', state.phase === 'idle');
     el.dropzone.classList.toggle('hidden', state.phase !== 'idle');
-    el.resetBtn.classList.toggle('hidden', !(state.phase === 'success' || state.phase === 'error'));
+    el.resetBtn.classList.toggle('hidden', !(state.phase === 'success' || state.phase === 'batchSuccess' || state.phase === 'error'));
+    el.batchCancelBtn.classList.toggle('hidden', state.phase !== 'batchProcessing');
+
+    var count = selectedLevelsList().length;
+    var isMulti = count > 1;
 
     // main action button
     var btn = el.mainActionBtn, label = el.mainActionLabel;
@@ -664,14 +776,20 @@
       btn.innerHTML = iconSvg + '<span>เลือกไฟล์เพื่อเริ่ม</span>';
     } else if(state.phase === 'fileReady'){
       btn.disabled = false;
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17 L10 7 L14 13 L17 9 L20 17 Z"/></svg><span>แปลงเป็น SVG</span>';
-    } else if(state.phase === 'processing'){
+      var convertLabel = isMulti ? ('แปลงเป็น SVG (' + count + ' ระดับ)') : 'แปลงเป็น SVG';
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17 L10 7 L14 13 L17 9 L20 17 Z"/></svg><span>' + convertLabel + '</span>';
+    } else if(state.phase === 'processing' || state.phase === 'batchProcessing'){
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span><span>กำลังประมวลผล...</span>';
     } else if(state.phase === 'success'){
       btn.disabled = false;
       btn.classList.add('success');
       btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M6 11l6 6 6-6"/><path d="M5 21h14"/></svg><span>ดาวน์โหลด SVG</span>';
+    } else if(state.phase === 'batchSuccess'){
+      btn.disabled = false;
+      btn.classList.add('success');
+      var doneCount = state.batch ? state.batch.order.filter(function(l){ return state.batch.results[l].status === 'done'; }).length : 0;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M6 11l6 6 6-6"/><path d="M5 21h14"/></svg><span>ดาวน์โหลดทั้งหมด (' + doneCount + ')</span>';
     } else if(state.phase === 'error'){
       btn.disabled = true;
       btn.innerHTML = iconSvg + '<span>เลือกไฟล์เพื่อเริ่ม</span>';
@@ -795,6 +913,18 @@
     el.manualDownloadLink.classList.add('hidden');
     el.manualDownloadLink.removeAttribute('href');
     el.processReassure.classList.add('hidden');
+    teardownBatch();
+  }
+
+  function teardownBatch(){
+    if(state.batch){
+      if(state.batch.elapsedInterval){ clearInterval(state.batch.elapsedInterval); }
+      state.batch.order.forEach(function(lvl){
+        var r = state.batch.results[lvl];
+        if(r && r.worker){ try{ r.worker.terminate(); }catch(e){} }
+      });
+    }
+    state.batch = null;
   }
 
   function showError(title, body){
@@ -820,11 +950,21 @@
   /* ============ Convert / Download main action ============ */
   el.mainActionBtn.addEventListener('click', function(){
     if(el.mainActionBtn.disabled) return; // hard guard against double-taps
-    if(state.phase === 'fileReady'){ startConversion(); }
+    if(state.phase === 'fileReady'){
+      var levels = selectedLevelsList();
+      if(levels.length > 1){ startBatchConversion(levels); }
+      else { startConversion(levels[0]); }
+    }
     else if(state.phase === 'success'){ downloadSvg(); }
+    else if(state.phase === 'batchSuccess'){ downloadAllBatch(); }
   });
 
-  function startConversion(){
+  function buildEngineOptions(level){
+    var preset = PRESETS[level];
+    return Object.assign({}, preset.options, { scale:1, viewbox:false, desc:false, layering:0, mincolorratio:0, colorsampling:2, linefilter:false, lcpr:0, qcpr:0, blurdelta:20, corsenabled:false });
+  }
+
+  function startConversion(level){
     if(!state.imageData) return;
     setPhase('processing');
     el.processThumb.src = state.previewDataUrl;
@@ -836,8 +976,7 @@
       el.processSub.textContent = PROCESS_MESSAGES[msgIdx];
     }, 1300);
 
-    var preset = PRESETS[state.selectedLevel];
-    var options = Object.assign({}, preset.options, { scale:1, viewbox:false, desc:false, layering:0, mincolorratio:0, colorsampling:2, linefilter:false, lcpr:0, qcpr:0, blurdelta:20, corsenabled:false });
+    var options = buildEngineOptions(level);
 
     var worker;
     try{
@@ -900,7 +1039,8 @@
         width: state.imageData.width,
         height: state.imageData.height,
         data: state.imageData.data,
-        options: options
+        options: options,
+        level: level
       });
     }catch(err){
       finishProcessingUI();
@@ -923,17 +1063,349 @@
     setPhase('fileReady');
   });
 
+  /* ============ Batch (multi-level, parallel) conversion ============ */
+  var BATCH_LEVEL_NAMES = { 1:'เร็ว', 2:'สมดุล', 3:'ละเอียด', 4:'คุณภาพสูง', 5:'สูงสุด' };
+
+  function createTracerWorker(){
+    var workerSrc = IMAGETRACER_SRC + "\n" + WORKER_HANDLER_SRC;
+    var blob = new Blob([workerSrc], { type: 'application/javascript' });
+    var workerUrl = URL.createObjectURL(blob);
+    var worker = new Worker(workerUrl);
+    URL.revokeObjectURL(workerUrl);
+    return worker;
+  }
+
+  function startBatchConversion(levels){
+    if(!state.imageData) return;
+    teardownBatch();
+
+    var results = {};
+    levels.forEach(function(lvl){ results[lvl] = { status:'queued', svgString:'', svgDataUrl:'', stats:null, worker:null }; });
+    state.batch = { levels: levels, results: results, order: levels.slice(), startTime: performance.now(), elapsedInterval: null };
+
+    el.batchHeading.textContent = 'กำลังสร้าง SVG ' + levels.length + ' ระดับพร้อมกัน';
+    renderBatchRows();
+    setPhase('batchProcessing');
+
+    el.batchElapsed.textContent = '0.0 วินาที';
+    state.batch.elapsedInterval = setInterval(function(){
+      if(!state.batch) return;
+      var s = (performance.now() - state.batch.startTime) / 1000;
+      el.batchElapsed.textContent = s.toFixed(1) + ' วินาที';
+    }, 100);
+
+    // One worker per selected level, all started together — each level's
+    // pixel data is a separate copy since typed arrays can't be shared
+    // (transferred) across more than one worker at a time.
+    levels.forEach(function(lvl){
+      var worker;
+      try{
+        worker = createTracerWorker();
+      }catch(err){
+        logErr('batch-worker-create', err);
+        results[lvl].status = 'error';
+        results[lvl].errorMsg = 'สร้าง worker ไม่สำเร็จ';
+        renderBatchRows();
+        checkBatchDone();
+        return;
+      }
+      results[lvl].status = 'processing';
+      results[lvl].worker = worker;
+      results[lvl].startTime = performance.now();
+
+      worker.onmessage = function(e){
+        var msg = e.data;
+        try{ worker.terminate(); }catch(err){}
+        var r = results[lvl];
+        if(!r) return;
+        r.worker = null;
+        if(!msg || !msg.ok){
+          logErr('batch-worker-fail', msg && msg.error);
+          r.status = 'error';
+          r.errorMsg = 'แปลงระดับนี้ไม่สำเร็จ';
+        } else {
+          var blob = new Blob([msg.svg], { type: 'image/svg+xml' });
+          var pathCount = (msg.svg.match(/<path /g) || []).length;
+          r.status = 'done';
+          r.svgString = msg.svg;
+          r.svgDataUrl = URL.createObjectURL(blob);
+          r.stats = { bytes: blob.size, colors: msg.paletteLength, paths: pathCount, timeMs: performance.now() - r.startTime };
+        }
+        renderBatchRows();
+        checkBatchDone();
+      };
+      worker.onerror = function(err){
+        try{ worker.terminate(); }catch(e){}
+        var r = results[lvl];
+        if(!r) return;
+        r.worker = null;
+        r.status = 'error';
+        r.errorMsg = 'เกิดข้อผิดพลาดระหว่างประมวลผล';
+        logErr('batch-worker-onerror', err && err.message ? err.message : err);
+        renderBatchRows();
+        checkBatchDone();
+      };
+
+      try{
+        worker.postMessage({
+          width: state.imageData.width,
+          height: state.imageData.height,
+          data: state.imageData.data.slice(), // independent copy per worker
+          options: buildEngineOptions(lvl),
+          level: lvl
+        });
+      }catch(err){
+        try{ worker.terminate(); }catch(e){}
+        results[lvl].status = 'error';
+        results[lvl].errorMsg = 'ส่งข้อมูลรูปไม่สำเร็จ';
+        logErr('batch-postMessage', err);
+        renderBatchRows();
+        checkBatchDone();
+      }
+    });
+  }
+
+  function checkBatchDone(){
+    if(!state.batch) return;
+    var stillGoing = state.batch.order.some(function(lvl){
+      var s = state.batch.results[lvl].status;
+      return s === 'queued' || s === 'processing';
+    });
+    if(!stillGoing){
+      if(state.batch.elapsedInterval){ clearInterval(state.batch.elapsedInterval); state.batch.elapsedInterval = null; }
+      var doneCount = state.batch.order.filter(function(l){ return state.batch.results[l].status === 'done'; }).length;
+      if(doneCount === 0){
+        showError('การแปลงภาพล้มเหลว', 'แปลงไม่สำเร็จทุกระดับที่เลือก ลองใหม่อีกครั้งหรือเลือกระดับอื่น');
+        return;
+      }
+      el.batchSummary.textContent = 'เสร็จแล้ว ' + doneCount + ' จาก ' + state.batch.order.length + ' ระดับ';
+      setPhase('batchSuccess');
+    }
+  }
+
+  function renderBatchRows(){
+    if(!state.batch) return;
+    // Completed rows bubble to the top in the order they finished; anything
+    // still queued/processing stays below in level order — "whichever
+    // finishes first shows up first."
+    var done = [], pending = [];
+    state.batch.order.forEach(function(lvl){
+      var r = state.batch.results[lvl];
+      if(r.status === 'done' || r.status === 'error') done.push(lvl); else pending.push(lvl);
+    });
+    // stable-sort done group by completion order already implied by when
+    // this function last reordered them: track explicit finish order.
+    if(!state.batch._finishOrder) state.batch._finishOrder = [];
+    done.forEach(function(lvl){
+      if(state.batch._finishOrder.indexOf(lvl) === -1) state.batch._finishOrder.push(lvl);
+    });
+    var doneSorted = state.batch._finishOrder.filter(function(l){ return done.indexOf(l) !== -1; });
+    var orderedLevels = doneSorted.concat(pending);
+
+    el.batchRows.innerHTML = '';
+    orderedLevels.forEach(function(lvl){
+      var r = state.batch.results[lvl];
+      var row = document.createElement('div');
+      row.className = 'batch-row' + (r.status === 'done' ? ' is-done' : '') + (r.status === 'error' ? ' is-error' : '');
+
+      var badge = '<div class="lvl-badge">' + lvl + '</div>';
+      var sub;
+      if(r.status === 'queued') sub = 'รอคิว...';
+      else if(r.status === 'processing') sub = 'กำลังประมวลผล...';
+      else if(r.status === 'done') sub = fmtBytes(r.stats.bytes) + ' · ' + fmtTime(r.stats.timeMs) + ' · ' + r.stats.paths + ' path';
+      else sub = r.errorMsg || 'ผิดพลาด';
+
+      var info = '<div class="info"><div class="name">ระดับ ' + lvl + ' · ' + (BATCH_LEVEL_NAMES[lvl]||'') + '</div><div class="sub">' + sub + '</div></div>';
+
+      var status;
+      if(r.status === 'queued' || r.status === 'processing'){
+        status = '<div class="status"><div class="batch-spinner"></div></div>';
+      } else if(r.status === 'done'){
+        status = '<button type="button" class="dl-btn" data-level="' + lvl + '" aria-label="ดาวน์โหลด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M6 11l6 6 6-6"/><path d="M5 21h14"/></svg></button>';
+      } else {
+        status = '<button type="button" class="retry-btn" data-level="' + lvl + '">ลองใหม่</button>';
+      }
+
+      row.innerHTML = badge + info + status;
+      el.batchRows.appendChild(row);
+    });
+
+    // wire up per-row buttons (re-created each render, so re-bind each time)
+    el.batchRows.querySelectorAll('.dl-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var lvl = Number(btn.getAttribute('data-level'));
+        downloadOneBatchLevel(lvl);
+      });
+    });
+    el.batchRows.querySelectorAll('.retry-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var lvl = Number(btn.getAttribute('data-level'));
+        retryBatchLevel(lvl);
+      });
+    });
+  }
+
+  function retryBatchLevel(lvl){
+    if(!state.batch || !state.imageData) return;
+    var r = state.batch.results[lvl];
+    r.status = 'processing';
+    r.errorMsg = '';
+    r.startTime = performance.now();
+    renderBatchRows();
+    if(!state.batch.elapsedInterval){
+      state.batch.startTime = performance.now();
+      state.batch.elapsedInterval = setInterval(function(){
+        if(!state.batch) return;
+        var s = (performance.now() - state.batch.startTime) / 1000;
+        el.batchElapsed.textContent = s.toFixed(1) + ' วินาที';
+      }, 100);
+    }
+    setPhase('batchProcessing');
+
+    var worker;
+    try{ worker = createTracerWorker(); }
+    catch(err){ r.status = 'error'; r.errorMsg = 'สร้าง worker ไม่สำเร็จ'; renderBatchRows(); checkBatchDone(); return; }
+    r.worker = worker;
+    worker.onmessage = function(e){
+      var msg = e.data;
+      try{ worker.terminate(); }catch(err){}
+      r.worker = null;
+      if(!msg || !msg.ok){
+        r.status = 'error'; r.errorMsg = 'แปลงระดับนี้ไม่สำเร็จ';
+      } else {
+        var blob = new Blob([msg.svg], { type: 'image/svg+xml' });
+        var pathCount = (msg.svg.match(/<path /g) || []).length;
+        r.status = 'done';
+        r.svgString = msg.svg;
+        r.svgDataUrl = URL.createObjectURL(blob);
+        r.stats = { bytes: blob.size, colors: msg.paletteLength, paths: pathCount, timeMs: performance.now() - r.startTime };
+      }
+      renderBatchRows();
+      checkBatchDone();
+    };
+    worker.onerror = function(err){
+      try{ worker.terminate(); }catch(e){}
+      r.worker = null; r.status = 'error'; r.errorMsg = 'เกิดข้อผิดพลาดระหว่างประมวลผล';
+      renderBatchRows();
+      checkBatchDone();
+    };
+    worker.postMessage({
+      width: state.imageData.width, height: state.imageData.height,
+      data: state.imageData.data.slice(), options: buildEngineOptions(lvl), level: lvl
+    });
+  }
+
+  el.batchCancelBtn.addEventListener('click', function(){
+    if(!state.batch) return;
+    state.batch.order.forEach(function(lvl){
+      var r = state.batch.results[lvl];
+      if((r.status === 'queued' || r.status === 'processing') && r.worker){
+        try{ r.worker.terminate(); }catch(e){}
+        r.status = 'error';
+        r.errorMsg = 'ยกเลิกแล้ว';
+      }
+    });
+    renderBatchRows();
+    checkBatchDone();
+  });
+
+  function baseNameNoExt(name){
+    name = name || 'image';
+    var dot = name.lastIndexOf('.');
+    return dot > -1 ? name.slice(0, dot) : name;
+  }
+
+  function downloadOneBatchLevel(lvl){
+    var r = state.batch && state.batch.results[lvl];
+    if(!r || r.status !== 'done') return;
+    var filename = baseNameNoExt(state.originalName) + '-L' + lvl + '.svg';
+    var blob = new Blob([r.svgString], { type: 'image/svg+xml' });
+    anchorDownload(blob, filename);
+  }
+
+  function downloadAllBatch(){
+    if(!state.batch) return;
+    var doneLevels = state.batch.order.filter(function(l){ return state.batch.results[l].status === 'done'; });
+    if(doneLevels.length === 0) return;
+
+    // Prefer sharing all files at once via the native share sheet on phones.
+    if(navigator.share && navigator.canShare){
+      try{
+        var files = doneLevels.map(function(lvl){
+          var r = state.batch.results[lvl];
+          var filename = baseNameNoExt(state.originalName) + '-L' + lvl + '.svg';
+          return new File([new Blob([r.svgString],{type:'image/svg+xml'})], filename, { type:'image/svg+xml' });
+        });
+        if(navigator.canShare({ files: files })){
+          navigator.share({ files: files, title: 'SVG ' + files.length + ' ระดับ' }).catch(function(err){
+            if(err && err.name === 'AbortError') return;
+            logErr('batch-share-failed-fallback', err);
+            doneLevels.forEach(function(lvl, i){ setTimeout(function(){ downloadOneBatchLevel(lvl); }, i * 350); });
+          });
+          return;
+        }
+      }catch(err){
+        logErr('batch-share-unavailable-fallback', err);
+      }
+    }
+    // Fallback: trigger individual downloads with a small stagger so mobile
+    // browsers don't drop rapid-fire downloads.
+    doneLevels.forEach(function(lvl, i){ setTimeout(function(){ downloadOneBatchLevel(lvl); }, i * 350); });
+  }
+
 
   var WORKER_HANDLER_SRC = String.raw`
+function mergeSimilarPaletteColors(cq, threshold){
+  // Collapse palette entries that are visually indistinguishable (within
+  // 'threshold' summed RGBA distance) into one before layering. This is
+  // the exact same expansion imagedataToTracedata does internally, split
+  // into steps so we can splice in the merge between quantization and
+  // layering — the two most expensive stages for a many-color palette.
+  var pal = cq.palette, n = pal.length;
+  var remap = new Array(n).fill(-1);
+  var keep = [];
+  for(var i=0;i<n;i++){
+    if(remap[i] !== -1) continue;
+    remap[i] = keep.length;
+    keep.push(pal[i]);
+    for(var j=i+1;j<n;j++){
+      if(remap[j] !== -1) continue;
+      var d = Math.abs(pal[i].r-pal[j].r) + Math.abs(pal[i].g-pal[j].g) + Math.abs(pal[i].b-pal[j].b) + Math.abs(pal[i].a-pal[j].a);
+      if(d <= threshold) remap[j] = keep.length - 1;
+    }
+  }
+  var arr = cq.array;
+  for(var y=0;y<arr.length;y++){
+    for(var x=0;x<arr[y].length;x++){
+      if(arr[y][x] >= 0) arr[y][x] = remap[arr[y][x]];
+    }
+  }
+  return { array: arr, palette: keep };
+}
+
+function traceOneLevel(imagedata, opt){
+  var IT = self.ImageTracer;
+  var cq = IT.colorquantization(imagedata, opt);
+  if(opt.mergeThreshold > 0){
+    cq = mergeSimilarPaletteColors(cq, opt.mergeThreshold);
+  }
+  var layers = IT.layering(cq);
+  var paths = IT.batchpathscan(layers, opt.pathomit);
+  var inodes = IT.batchinternodes(paths, opt);
+  var traced = IT.batchtracelayers(inodes, opt.ltres, opt.qtres);
+  var tracedata = { layers: traced, palette: cq.palette, width: imagedata.width, height: imagedata.height };
+  var svg = IT.getsvgstring(tracedata, opt);
+  return { svg: svg, paletteLength: tracedata.palette.length };
+}
+
 self.onmessage = function(e){
   try{
     var d = e.data;
     var imagedata = { width: d.width, height: d.height, data: d.data };
-    var tracedata = self.ImageTracer.imagedataToTracedata(imagedata, d.options);
-    var svg = self.ImageTracer.getsvgstring(tracedata, d.options);
-    self.postMessage({ ok:true, svg: svg, paletteLength: tracedata.palette.length });
+    var result = traceOneLevel(imagedata, d.options);
+    self.postMessage({ ok:true, level: d.level, svg: result.svg, paletteLength: result.paletteLength });
   }catch(err){
-    self.postMessage({ ok:false, error: (err && err.message) ? err.message : String(err) });
+    self.postMessage({ ok:false, level: e.data && e.data.level, error: (err && err.message) ? err.message : String(err) });
   }
 };
 `;
