@@ -130,8 +130,7 @@
       card.innerHTML =
         '<div class="level-checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></div>' +
         '<div class="level-icon"><img src="' + LEVEL_ICONS[lvl] + '" alt="ไอคอนระดับ ' + lvl + '" loading="lazy"></div>' +
-        '<div class="name">' + p.name + '</div>' +
-        '<div class="desc">' + p.desc + '</div>';
+        '<div class="name">' + p.name + '</div>';
       card.addEventListener('click', function(){
         var willSelect = !state.selectedLevels[lvl];
         // guard: don't allow zero levels selected — keep at least one
